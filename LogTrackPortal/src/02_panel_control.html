@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogTrack Portal — Panel de control</title>
+<style>
+  /* ===== Design tokens — compartidos en las 4 pantallas de LogTrack Portal ===== */
+  :root{
+    --ink-0:#0B0E16; --ink-1:#141824; --ink-2:#1B2030;
+    --line:#242B3D; --line-strong:#323A52;
+    --text-1:#EDEFF5; --text-2:#8B93A7; --text-3:#5B6377;
+    --indigo:#6C7BFA; --indigo-strong:#8B97FF; --indigo-bg:rgba(108,123,250,.14);
+    --red:#F0465C;    --red-strong:#FF7A8A;    --red-bg:rgba(240,70,92,.14);
+    --teal:#2BD4A0;   --teal-strong:#5CE8BC;   --teal-bg:rgba(43,212,160,.14);
+    --amber:#F5A623;  --amber-strong:#FFC155;  --amber-bg:rgba(245,166,35,.14);
+    --r-hero:24px; --r-card:16px; --r-chip:10px;
+    --shadow-hero:0 1px 2px rgba(0,0,0,.5), 0 24px 48px -16px rgba(0,0,0,.55);
+    --shadow-card:0 1px 2px rgba(0,0,0,.4), 0 10px 24px -12px rgba(0,0,0,.45);
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter","Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--font-sans); background-color:var(--ink-0);
+    background-image:
+      radial-gradient(circle at 15% -10%, rgba(108,123,250,.16), transparent 42%),
+      radial-gradient(circle at 100% 0%, rgba(43,212,160,.08), transparent 40%);
+    background-attachment:fixed; color:var(--text-1); line-height:1.55;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  a{color:inherit;}
+  :focus-visible{outline:2px solid var(--indigo-strong); outline-offset:2px; border-radius:4px;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+
+  /* Acento según el modo activo — controlado por la clase en <body> */
+  body.mode-vulnerable{ --mode:var(--red);  --mode-strong:var(--red-strong);  --mode-bg:var(--red-bg);  --mode-border:rgba(240,70,92,.35); }
+  body.mode-remediado{  --mode:var(--teal); --mode-strong:var(--teal-strong); --mode-bg:var(--teal-bg); --mode-border:rgba(43,212,160,.35); }
+
+  .wrap{max-width:1180px; margin:0 auto; padding:40px 28px 64px;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px; flex-wrap:wrap;}
+  .back-link{display:inline-flex; align-items:center; gap:8px; color:var(--text-2); text-decoration:none; font-size:14px; font-weight:500;}
+  .back-link:hover{color:var(--text-1);}
+  .back-link svg{width:16px; height:16px;}
+  .mode-pill{display:inline-flex; align-items:center; gap:8px; padding:7px 14px; border-radius:999px;
+    font-size:13px; font-weight:600; background:var(--mode-bg); color:var(--mode-strong); border:1px solid var(--mode-border);}
+  .mode-pill .dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
+
+  .page-head{margin:26px 0 34px;}
+  .page-head h1{font-size:27px; font-weight:700; letter-spacing:-.01em; margin:0 0 6px;}
+  .page-head p{font-size:14.5px; color:var(--text-2); margin:0; max-width:64ch;}
+
+  .section-title{font-size:13.5px; font-weight:600; color:var(--text-2); margin:0 0 14px;}
+
+  .icon-badge{width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; flex-shrink:0;}
+  .icon-badge svg{width:20px; height:20px;}
+  .tone-indigo{background:var(--indigo-bg); color:var(--indigo-strong);}
+
+  .btn{display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:10px;
+    font-size:14px; font-weight:600; border:1px solid transparent; cursor:pointer; text-decoration:none;
+    transition:transform .15s ease, box-shadow .15s ease, background .15s ease;}
+  .btn svg{width:15px; height:15px;}
+  .btn-run{background:var(--indigo-bg); border-color:rgba(108,123,250,.4); color:var(--indigo-strong);}
+  .btn-run:hover{background:rgba(108,123,250,.22); transform:translateY(-1px);}
+
+  .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:18px;}
+  @media (max-width:900px){ .grid-3{grid-template-columns:1fr;} }
+
+  .scenario-card{background:var(--ink-1); border:1px solid var(--line); border-radius:var(--r-card);
+    padding:24px; box-shadow:var(--shadow-card); display:flex; flex-direction:column;}
+  .scenario-card h3{font-size:16px; font-weight:700; margin:0 0 8px;}
+  .scenario-card p{font-size:13.5px; color:var(--text-2); margin:0 0 20px; flex:1;}
+
+  .nav-tiles{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:14px;}
+  @media (max-width:700px){ .nav-tiles{grid-template-columns:1fr;} }
+  .nav-tile{display:flex; align-items:center; gap:16px; background:var(--ink-1); border:1px solid var(--line);
+    border-radius:var(--r-card); padding:18px 20px; text-decoration:none; color:var(--text-1);
+    transition:transform .15s ease, border-color .15s ease;}
+  .nav-tile:hover{transform:translateY(-2px); border-color:var(--line-strong);}
+  .nav-tile .icon-badge{margin:0;}
+  .nav-tile-text h4{font-size:15px; font-weight:700; margin:0 0 3px;}
+  .nav-tile-text p{font-size:13px; color:var(--text-2); margin:0;}
+  .nav-tile .chevron{margin-left:auto; color:var(--text-3); width:18px; height:18px; flex-shrink:0;}
+
+  .result-hero{background:var(--ink-1); border:1px solid var(--line); border-radius:var(--r-hero);
+    padding:30px 32px; box-shadow:var(--shadow-hero); margin-top:36px;}
+  .result-head{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:4px;}
+  .result-head h3{font-size:19px; font-weight:700; margin:0;}
+  .result-meta{font-size:13px; color:var(--text-3); margin:4px 0 18px;}
+  .result-summary{font-size:14.5px; color:var(--text-2); margin:0 0 24px; max-width:74ch;}
+
+  .detect-badge{display:inline-flex; align-items:center; gap:7px; padding:6px 13px; border-radius:999px; font-size:13px; font-weight:600;}
+  .detect-badge .dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
+  .detect-badge.detected{background:var(--teal-bg); color:var(--teal-strong); border:1px solid rgba(43,212,160,.35);}
+  .detect-badge.undetected{background:var(--red-bg); color:var(--red-strong); border:1px solid rgba(240,70,92,.35);}
+  .detect-badge.pending{background:var(--ink-2); color:var(--text-2); border:1px solid var(--line);}
+
+  .stat-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px;}
+  .stat-chip{background:var(--ink-2); border:1px solid var(--line); border-radius:var(--r-chip); padding:14px 16px;}
+  .stat-chip .label{font-size:12.5px; color:var(--text-2); margin-bottom:4px;}
+  .stat-chip .value{font-size:22px; font-weight:700;}
+  @media (max-width:760px){ .stat-row{grid-template-columns:repeat(2,1fr);} }
+</style>
+</head>
+<body class="{{MODE_CLASS}}">
+
+<!--
+  ============================================================================
+  LogTrack Portal — Pantalla 2: Panel de control
+  ============================================================================
+  Placeholders a reemplazar por Java:
+
+  EN <body>:
+  {{MODE_CLASS}}          "mode-vulnerable" | "mode-remediado"
+                          Controla el color de acento de toda la pantalla
+                          (pill de modo, badges de detección, etc.)
+
+  NAVEGACIÓN:
+  {{HOME_URL}}            href para volver a la pantalla de selección de modo
+  {{LOGS_URL}}            href a la pantalla 3 (ver logs) en el modo actual
+  {{METRICS_URL}}         href a la pantalla 4 (ver métricas) en el modo actual
+  {{MODE_LABEL}}          Texto visible del modo actual: "Modo Vulnerable" | "Modo Remediado"
+
+  EJECUCIÓN DE ESCENARIOS (enlaces GET que recargan la página con el resultado):
+  {{RUN_CREDENTIAL_STUFFING_URL}}
+  {{RUN_PRIVILEGE_ESCALATION_URL}}
+  {{RUN_LOG_TAMPERING_URL}}
+
+  RESULTADO DE LA ÚLTIMA ACCIÓN EJECUTADA:
+  {{LAST_ACTION_NAME}}            Ej: "Credential Stuffing" | por defecto: "Ningún escenario ejecutado aún"
+  {{LAST_ACTION_DETECTION_CLASS}} "detected" | "undetected" | "pending" (sin ejecutar aún)
+  {{LAST_ACTION_DETECTION_LABEL}} Ej: "Detectado y registrado" | "No detectado" | "Sin ejecutar aún"
+  {{LAST_ACTION_TIMESTAMP}}       Ej: "06 sep 2026, 14:32:01" | por defecto: "—"
+  {{LAST_ACTION_SUMMARY}}         Frase descriptiva del resultado (1-2 líneas)
+  {{LAST_ACTION_EVENTS}}          Número de eventos generados, o "—"
+  {{LAST_ACTION_ALERTS}}          Número de alertas disparadas, o "—"
+  {{LAST_ACTION_DETECTION_TIME}}  Ej: "1.8s" | "N/A" | "—"
+  {{LAST_ACTION_CONTEXT_PCT}}     Incluir el símbolo %, ej: "82%" | "—"
+
+  Nota: cuando aún no se ha ejecutado ningún escenario, usar los valores
+  por defecto anteriores y la clase "pending" para que la tarjeta de
+  resultado se muestre en un estado neutro, no en rojo ni verde.
+  ============================================================================
+-->
+
+<div class="wrap">
+
+  <div class="topbar">
+    <!-- Placeholder: {{HOME_URL}} -->
+    <a class="back-link" href="{{HOME_URL}}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Volver al inicio
+    </a>
+    <!-- Placeholder: {{MODE_LABEL}} -->
+    <span class="mode-pill"><span class="dot"></span>{{MODE_LABEL}}</span>
+  </div>
+
+  <div class="page-head">
+    <h1>Panel de control</h1>
+    <p>Ejecuta un escenario de ataque y observa cómo responde el sistema
+      en este modo. El resultado de la última acción se muestra al final
+      de esta página.</p>
+  </div>
+
+  <p class="section-title">Escenarios de ataque</p>
+  <div class="grid-3">
+
+    <div class="scenario-card">
+      <div class="icon-badge tone-indigo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.5 12.5 19 4M17 6l2 2M14 9l2 2"/></svg>
+      </div>
+      <h3>Credential stuffing</h3>
+      <p>Simula 10 intentos de inicio de sesión fallidos consecutivos,
+        como en un ataque automatizado de prueba de contraseñas.</p>
+      <!-- Placeholder: {{RUN_CREDENTIAL_STUFFING_URL}} -->
+      <a class="btn btn-run" href="{{RUN_CREDENTIAL_STUFFING_URL}}">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20"/></svg>
+        Ejecutar escenario
+      </a>
+    </div>
+
+    <div class="scenario-card">
+      <div class="icon-badge tone-indigo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7.5 8-7.5s8 3.1 8 7.5"/><path d="M16.5 5.5 19 3M19 3l-2 .3M19 3l-.3 2"/></svg>
+      </div>
+      <h3>Escalación de privilegios</h3>
+      <p>Un usuario autenticado intenta modificar su propio rol para
+        obtener permisos de administrador.</p>
+      <!-- Placeholder: {{RUN_PRIVILEGE_ESCALATION_URL}} -->
+      <a class="btn btn-run" href="{{RUN_PRIVILEGE_ESCALATION_URL}}">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20"/></svg>
+        Ejecutar escenario
+      </a>
+    </div>
+
+    <div class="scenario-card">
+      <div class="icon-badge tone-indigo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h7"/><path d="M17 14l4 4m0-4-4 4"/></svg>
+      </div>
+      <h3>Log tampering</h3>
+      <p>Intenta inyectar caracteres de control en el registro y simula
+        el apagado del sistema de logging.</p>
+      <!-- Placeholder: {{RUN_LOG_TAMPERING_URL}} -->
+      <a class="btn btn-run" href="{{RUN_LOG_TAMPERING_URL}}">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 4 20 12 6 20"/></svg>
+        Ejecutar escenario
+      </a>
+    </div>
+
+  </div>
+
+  <p class="section-title" style="margin-top:34px;">Revisar resultados</p>
+  <div class="nav-tiles">
+    <!-- Placeholder: {{LOGS_URL}} -->
+    <a class="nav-tile" href="{{LOGS_URL}}">
+      <div class="icon-badge tone-indigo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      </div>
+      <div class="nav-tile-text">
+        <h4>Ver registro de logs</h4>
+        <p>Contenido completo del archivo de log en este modo</p>
+      </div>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </a>
+    <!-- Placeholder: {{METRICS_URL}} -->
+    <a class="nav-tile" href="{{METRICS_URL}}">
+      <div class="icon-badge tone-indigo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>
+      </div>
+      <div class="nav-tile-text">
+        <h4>Ver métricas</h4>
+        <p>Resumen cuantitativo de detección y cobertura</p>
+      </div>
+      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    </a>
+  </div>
+
+  <div class="result-hero">
+    <div class="result-head">
+      <!-- Placeholder: {{LAST_ACTION_NAME}} -->
+      <h3>{{LAST_ACTION_NAME}}</h3>
+      <!-- Placeholder: {{LAST_ACTION_DETECTION_CLASS}}, {{LAST_ACTION_DETECTION_LABEL}} -->
+      <span class="detect-badge {{LAST_ACTION_DETECTION_CLASS}}"><span class="dot"></span>{{LAST_ACTION_DETECTION_LABEL}}</span>
+    </div>
+    <!-- Placeholder: {{LAST_ACTION_TIMESTAMP}} -->
+    <p class="result-meta">Última ejecución: {{LAST_ACTION_TIMESTAMP}}</p>
+    <!-- Placeholder: {{LAST_ACTION_SUMMARY}} -->
+    <p class="result-summary">{{LAST_ACTION_SUMMARY}}</p>
+    <div class="stat-row">
+      <div class="stat-chip"><div class="label">Eventos generados</div><div class="value">{{LAST_ACTION_EVENTS}}</div></div>
+      <div class="stat-chip"><div class="label">Alertas disparadas</div><div class="value">{{LAST_ACTION_ALERTS}}</div></div>
+      <div class="stat-chip"><div class="label">Tiempo hasta detección</div><div class="value">{{LAST_ACTION_DETECTION_TIME}}</div></div>
+      <div class="stat-chip"><div class="label">Contexto completo</div><div class="value">{{LAST_ACTION_CONTEXT_PCT}}</div></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

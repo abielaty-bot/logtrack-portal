@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogTrack Portal — Métricas de seguridad</title>
+<style>
+  /* ===== Design tokens — compartidos en las 4 pantallas de LogTrack Portal ===== */
+  :root{
+    --ink-0:#0B0E16; --ink-1:#141824; --ink-2:#1B2030;
+    --line:#242B3D; --line-strong:#323A52;
+    --text-1:#EDEFF5; --text-2:#8B93A7; --text-3:#5B6377;
+    --indigo:#6C7BFA; --indigo-strong:#8B97FF; --indigo-bg:rgba(108,123,250,.14);
+    --red:#F0465C;    --red-strong:#FF7A8A;    --red-bg:rgba(240,70,92,.14);
+    --teal:#2BD4A0;   --teal-strong:#5CE8BC;   --teal-bg:rgba(43,212,160,.14);
+    --amber:#F5A623;  --amber-strong:#FFC155;  --amber-bg:rgba(245,166,35,.14);
+    --r-hero:24px; --r-card:16px; --r-chip:10px;
+    --shadow-hero:0 1px 2px rgba(0,0,0,.5), 0 24px 48px -16px rgba(0,0,0,.55);
+    --shadow-card:0 1px 2px rgba(0,0,0,.4), 0 10px 24px -12px rgba(0,0,0,.45);
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter","Helvetica Neue",Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--font-sans); background-color:var(--ink-0);
+    background-image:
+      radial-gradient(circle at 15% -10%, rgba(108,123,250,.16), transparent 42%),
+      radial-gradient(circle at 100% 0%, rgba(43,212,160,.08), transparent 40%);
+    background-attachment:fixed; color:var(--text-1); line-height:1.55;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  a{color:inherit;}
+  :focus-visible{outline:2px solid var(--indigo-strong); outline-offset:2px; border-radius:4px;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+
+  body.mode-vulnerable{ --mode:var(--red);  --mode-strong:var(--red-strong);  --mode-bg:var(--red-bg);  --mode-border:rgba(240,70,92,.35); }
+  body.mode-remediado{  --mode:var(--teal); --mode-strong:var(--teal-strong); --mode-bg:var(--teal-bg); --mode-border:rgba(43,212,160,.35); }
+
+  .wrap{max-width:1180px; margin:0 auto; padding:40px 28px 64px;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px; flex-wrap:wrap;}
+  .back-link{display:inline-flex; align-items:center; gap:8px; color:var(--text-2); text-decoration:none; font-size:14px; font-weight:500;}
+  .back-link:hover{color:var(--text-1);}
+  .back-link svg{width:16px; height:16px;}
+  .mode-pill{display:inline-flex; align-items:center; gap:8px; padding:7px 14px; border-radius:999px;
+    font-size:13px; font-weight:600; background:var(--mode-bg); color:var(--mode-strong); border:1px solid var(--mode-border);}
+  .mode-pill .dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
+
+  .page-head{margin:26px 0 30px;}
+  .page-head h1{font-size:27px; font-weight:700; letter-spacing:-.01em; margin:0 0 6px;}
+  .page-head p{font-size:14.5px; color:var(--text-2); margin:0; max-width:70ch;}
+
+  .section-title{font-size:13.5px; font-weight:600; color:var(--text-2); margin:0 0 14px;}
+
+  /* Banner de riesgo — el elemento con más peso visual de la pantalla */
+  .risk-banner{display:flex; align-items:center; gap:20px; padding:28px 32px; border-radius:var(--r-hero);
+    border:1px solid; margin-bottom:36px; box-shadow:var(--shadow-hero);}
+  .risk-banner .icon-badge{margin:0; width:56px; height:56px; border-radius:16px; background:rgba(255,255,255,.08); color:var(--risk-strong);}
+  .risk-banner .icon-badge svg{width:28px; height:28px;}
+  .risk-banner h2{font-size:22px; font-weight:800; margin:0 0 4px; color:var(--risk-strong);}
+  .risk-banner p{font-size:14px; margin:0; color:var(--text-2); max-width:64ch;}
+  .risk-critical{ --risk-strong:var(--red-strong); background:var(--red-bg); border-color:rgba(240,70,92,.35); }
+  .risk-warning{  --risk-strong:var(--amber-strong); background:var(--amber-bg); border-color:rgba(245,166,35,.35); }
+  .risk-controlled{ --risk-strong:var(--teal-strong); background:var(--teal-bg); border-color:rgba(43,212,160,.35); }
+
+  .grid-4{display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-bottom:38px;}
+  @media (max-width:980px){ .grid-4{grid-template-columns:1fr 1fr;} }
+  @media (max-width:560px){ .grid-4{grid-template-columns:1fr;} }
+
+  .metric-card{background:var(--ink-1); border:1px solid var(--line); border-radius:var(--r-card);
+    padding:26px; box-shadow:var(--shadow-card); display:flex; flex-direction:column; gap:12px;}
+  .icon-badge{width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center;}
+  .icon-badge svg{width:19px; height:19px;}
+  .tone-indigo{background:var(--indigo-bg); color:var(--indigo-strong);}
+  .m-label{font-size:13.5px; color:var(--text-2); font-weight:500;}
+  .m-value{font-size:36px; font-weight:800; letter-spacing:-.01em; line-height:1;}
+  .m-value.positive{color:var(--teal-strong);}
+  .m-value.negative{color:var(--red-strong);}
+  .m-sub{font-size:12.5px; color:var(--text-3);}
+  .progress-track{width:100%; height:9px; background:var(--ink-2); border-radius:999px; overflow:hidden; border:1px solid var(--line);}
+  .progress-fill{height:100%; border-radius:999px; background:linear-gradient(90deg, var(--mode), var(--mode-strong));}
+
+  .table-card{border:1px solid var(--line); border-radius:var(--r-hero); overflow:hidden; background:var(--ink-1); box-shadow:var(--shadow-hero);}
+  .table-scroll{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  thead th{text-align:left; padding:13px 18px; background:var(--ink-2); color:var(--text-2);
+    font-size:12px; font-weight:600; border-bottom:1px solid var(--line); white-space:nowrap;}
+  tbody td{padding:13px 18px; border-bottom:1px solid var(--line); color:var(--text-1);}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:rgba(255,255,255,.025);}
+
+  .status-badge{display:inline-flex; align-items:center; gap:7px; padding:5px 12px; border-radius:999px; font-size:12.5px; font-weight:600;}
+  .status-badge .dot{width:6px; height:6px; border-radius:50%; background:currentColor;}
+  .status-badge.detected{background:var(--teal-bg); color:var(--teal-strong);}
+  .status-badge.undetected{background:var(--red-bg); color:var(--red-strong);}
+
+  .insight-card{display:flex; gap:16px; align-items:flex-start; background:var(--ink-1); border:1px solid var(--line);
+    border-radius:var(--r-card); padding:22px 24px; margin-top:28px;}
+  .insight-card svg{width:20px; height:20px; color:var(--indigo-strong); flex-shrink:0; margin-top:2px;}
+  .insight-card p{margin:0; font-size:14px; color:var(--text-2); max-width:80ch;}
+</style>
+</head>
+<body class="{{MODE_CLASS}}">
+
+<!--
+  ============================================================================
+  LogTrack Portal — Pantalla 4: Métricas de seguridad
+  ============================================================================
+  Placeholders a reemplazar por Java:
+
+  {{MODE_CLASS}}         "mode-vulnerable" | "mode-remediado"
+  {{MODE_LABEL}}         Texto del modo actual para el pill superior
+  {{PANEL_URL}}          href para volver al panel de control (pantalla 2)
+
+  BANNER DE RIESGO (el elemento con más peso visual de la pantalla):
+  {{RISK_LEVEL_CLASS}}   "risk-critical" | "risk-warning" | "risk-controlled"
+  {{RISK_LEVEL_LABEL}}   Ej: "Riesgo crítico" | "Riesgo controlado"
+  {{RISK_LEVEL_DESC}}    Frase de una línea explicando el porqué
+
+  TARJETAS DE MÉTRICAS GRANDES:
+  {{METRICA_EVENTOS}}          Número de eventos generados
+  {{METRICA_ALERTAS}}          Número de alertas disparadas
+  {{METRICA_ALERTAS_CLASS}}    "positive" (bueno que sea alto, modo remediado)
+                                | "negative" (crítico que sea 0, modo vulnerable)
+                                | "" (neutro)
+  {{METRICA_TIEMPO_DETECCION}} Ej: "1.8s" | "N/A"
+  {{METRICA_CONTEXTO_PCT}}     SOLO EL NÚMERO, sin símbolo %, ej: "82".
+                                Se usa dos veces en esta plantilla: como texto
+                                (se le agrega "%" en el propio HTML) y como
+                                ancho de la barra de progreso (style="width:..%").
+
+  DETALLE POR ESCENARIO:
+  {{METRICAS_ESCENARIOS_ROWS}} Filas <tr> ya construidas por Java. Formato
+                                esperado por fila:
+
+                                <tr>
+                                  <td>Credential Stuffing</td>
+                                  <td>10</td>
+                                  <td>0</td>
+                                  <td>N/A</td>
+                                  <td>0%</td>
+                                  <td><span class="status-badge undetected"><span class="dot"></span>No detectado</span></td>
+                                </tr>
+
+                                Clases disponibles para el badge de estado:
+                                status-badge detected | status-badge undetected
+
+  {{METRICAS_INSIGHT_TEXT}}    Frase final a modo de conclusión/hallazgo,
+                                ej: "Sin registro estructurado es imposible
+                                reconstruir la cadena del ataque."
+  ============================================================================
+-->
+
+<div class="wrap">
+
+  <div class="topbar">
+    <!-- Placeholder: {{PANEL_URL}} -->
+    <a class="back-link" href="{{PANEL_URL}}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Volver al panel
+    </a>
+    <span class="mode-pill"><span class="dot"></span>{{MODE_LABEL}}</span>
+  </div>
+
+  <div class="page-head">
+    <h1>Métricas de seguridad</h1>
+    <p>Resumen cuantitativo de lo ocurrido en este modo tras ejecutar los
+      escenarios de ataque.</p>
+  </div>
+
+  <!-- Placeholder: {{RISK_LEVEL_CLASS}}, {{RISK_LEVEL_LABEL}}, {{RISK_LEVEL_DESC}} -->
+  <div class="risk-banner {{RISK_LEVEL_CLASS}}">
+    <div class="icon-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5.25 3.4 9.74 8 11 4.6-1.26 8-5.75 8-11V5z"/></svg>
+    </div>
+    <div>
+      <h2>{{RISK_LEVEL_LABEL}}</h2>
+      <p>{{RISK_LEVEL_DESC}}</p>
+    </div>
+  </div>
+
+  <div class="grid-4">
+
+    <div class="metric-card">
+      <div class="icon-badge tone-indigo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 12 8 12 10 6 14 18 16 12 21 12"/></svg>
+      </div>
+      <div class="m-label">Eventos generados</div>
+      <!-- Placeholder: {{METRICA_EVENTOS}} -->
+      <div class="m-value">{{METRICA_EVENTOS}}</div>
+      <div class="m-sub">durante esta sesión de pruebas</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="icon-badge tone-indigo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div class="m-label">Alertas disparadas</div>
+      <!-- Placeholder: {{METRICA_ALERTAS}}, {{METRICA_ALERTAS_CLASS}} -->
+      <div class="m-value {{METRICA_ALERTAS_CLASS}}">{{METRICA_ALERTAS}}</div>
+      <div class="m-sub">frente a los eventos ocurridos</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="icon-badge tone-indigo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+      </div>
+      <div class="m-label">Tiempo hasta detección</div>
+      <!-- Placeholder: {{METRICA_TIEMPO_DETECCION}} -->
+      <div class="m-value">{{METRICA_TIEMPO_DETECCION}}</div>
+      <div class="m-sub">desde el primer evento del ataque</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="icon-badge tone-indigo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8.5 12.5 11 15 15.5 9.5"/></svg>
+      </div>
+      <div class="m-label">Contexto completo</div>
+      <!-- Placeholder: {{METRICA_CONTEXTO_PCT}} (solo el número, se reutiliza abajo) -->
+      <div class="m-value">{{METRICA_CONTEXTO_PCT}}%</div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:{{METRICA_CONTEXTO_PCT}}%"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="section-title">Detalle por escenario</p>
+  <div class="table-card">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Escenario</th>
+            <th>Eventos</th>
+            <th>Alertas</th>
+            <th>Tiempo de detección</th>
+            <th>Contexto completo</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Placeholder: {{METRICAS_ESCENARIOS_ROWS}} — filas <tr> generadas por Java -->
+          {{METRICAS_ESCENARIOS_ROWS}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="insight-card">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+    <!-- Placeholder: {{METRICAS_INSIGHT_TEXT}} -->
+    <p>{{METRICAS_INSIGHT_TEXT}}</p>
+  </div>
+
+</div>
+</body>
+</html>

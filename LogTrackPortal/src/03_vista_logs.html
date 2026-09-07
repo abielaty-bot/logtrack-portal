@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogTrack Portal — Registro de eventos</title>
+<style>
+  /* ===== Design tokens — compartidos en las 4 pantallas de LogTrack Portal ===== */
+  :root{
+    --ink-0:#0B0E16; --ink-1:#141824; --ink-2:#1B2030;
+    --line:#242B3D; --line-strong:#323A52;
+    --text-1:#EDEFF5; --text-2:#8B93A7; --text-3:#5B6377;
+    --indigo:#6C7BFA; --indigo-strong:#8B97FF; --indigo-bg:rgba(108,123,250,.14);
+    --red:#F0465C;    --red-strong:#FF7A8A;    --red-bg:rgba(240,70,92,.14);
+    --teal:#2BD4A0;   --teal-strong:#5CE8BC;   --teal-bg:rgba(43,212,160,.14);
+    --amber:#F5A623;  --amber-strong:#FFC155;  --amber-bg:rgba(245,166,35,.14);
+    --r-hero:24px; --r-card:16px; --r-chip:10px;
+    --shadow-hero:0 1px 2px rgba(0,0,0,.5), 0 24px 48px -16px rgba(0,0,0,.55);
+    --shadow-card:0 1px 2px rgba(0,0,0,.4), 0 10px 24px -12px rgba(0,0,0,.45);
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter","Helvetica Neue",Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--font-sans); background-color:var(--ink-0);
+    background-image:
+      radial-gradient(circle at 15% -10%, rgba(108,123,250,.16), transparent 42%),
+      radial-gradient(circle at 100% 0%, rgba(43,212,160,.08), transparent 40%);
+    background-attachment:fixed; color:var(--text-1); line-height:1.55;
+    -webkit-font-smoothing:antialiased; min-height:100vh;
+  }
+  a{color:inherit;}
+  :focus-visible{outline:2px solid var(--indigo-strong); outline-offset:2px; border-radius:4px;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+
+  body.mode-vulnerable{ --mode:var(--red);  --mode-strong:var(--red-strong);  --mode-bg:var(--red-bg);  --mode-border:rgba(240,70,92,.35); }
+  body.mode-remediado{  --mode:var(--teal); --mode-strong:var(--teal-strong); --mode-bg:var(--teal-bg); --mode-border:rgba(43,212,160,.35); }
+
+  /* Conmutador puro-CSS: cada modo muestra solo el bloque de log que le corresponde */
+  body.mode-remediado .log-raw-block{ display:none; }
+  body.mode-vulnerable .log-table-block{ display:none; }
+
+  .wrap{max-width:1180px; margin:0 auto; padding:40px 28px 64px;}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:8px; flex-wrap:wrap;}
+  .back-link{display:inline-flex; align-items:center; gap:8px; color:var(--text-2); text-decoration:none; font-size:14px; font-weight:500;}
+  .back-link:hover{color:var(--text-1);}
+  .back-link svg{width:16px; height:16px;}
+  .mode-pill{display:inline-flex; align-items:center; gap:8px; padding:7px 14px; border-radius:999px;
+    font-size:13px; font-weight:600; background:var(--mode-bg); color:var(--mode-strong); border:1px solid var(--mode-border);}
+  .mode-pill .dot{width:7px; height:7px; border-radius:50%; background:currentColor;}
+
+  .page-head{margin:26px 0 24px;}
+  .page-head h1{font-size:27px; font-weight:700; letter-spacing:-.01em; margin:0 0 6px;}
+  .page-head p{font-size:14.5px; color:var(--text-2); margin:0; max-width:70ch;}
+
+  .log-toolbar{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:22px;}
+  .log-stat-pill{display:inline-flex; align-items:center; gap:7px; padding:8px 14px; border-radius:999px;
+    background:var(--ink-2); border:1px solid var(--line); font-size:13px; color:var(--text-2);}
+  .log-stat-pill strong{color:var(--text-1); font-weight:700;}
+  .integrity-pill{padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600;
+    background:var(--red-bg); color:var(--red-strong); border:1px solid rgba(240,70,92,.35);}
+  .integrity-pill:empty{display:none;}
+
+  /* Bloque crudo — modo vulnerable */
+  .log-raw-card{background:var(--ink-1); border:1px solid rgba(240,70,92,.25); border-radius:var(--r-hero);
+    box-shadow:var(--shadow-hero); overflow:hidden;}
+  .log-raw-head{display:flex; align-items:center; gap:10px; padding:16px 22px; background:var(--ink-2); border-bottom:1px solid var(--line);}
+  .log-raw-head svg{width:16px; height:16px; color:var(--red-strong); flex-shrink:0;}
+  .log-raw-head .fname{font-family:var(--font-mono); font-size:13px; color:var(--text-2); flex:1;}
+  .log-raw-head .tag{font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; background:var(--red-bg); color:var(--red-strong);}
+  .log-raw-body{padding:22px; max-height:540px; overflow:auto;}
+  .log-raw-body pre{margin:0; font-family:var(--font-mono); font-size:12.5px; line-height:1.75;
+    color:#C9CEDA; white-space:pre-wrap; word-break:break-word;}
+
+  /* Bloque tabular — modo remediado */
+  .log-table-card{border:1px solid var(--line); border-radius:var(--r-hero); overflow:hidden;
+    background:var(--ink-1); box-shadow:var(--shadow-hero);}
+  .log-table-head{display:flex; align-items:center; gap:10px; padding:16px 22px; background:var(--ink-2); border-bottom:1px solid var(--line);}
+  .log-table-head svg{width:16px; height:16px; color:var(--teal-strong); flex-shrink:0;}
+  .log-table-head .fname{font-family:var(--font-mono); font-size:13px; color:var(--text-2); flex:1;}
+  .log-table-head .tag{font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; background:var(--teal-bg); color:var(--teal-strong);}
+  .table-scroll{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  thead th{text-align:left; padding:13px 18px; background:var(--ink-2); color:var(--text-2);
+    font-size:12px; font-weight:600; border-bottom:1px solid var(--line); white-space:nowrap;}
+  tbody td{padding:12px 18px; border-bottom:1px solid var(--line); color:var(--text-1); vertical-align:top;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:rgba(255,255,255,.025);}
+  .mono{font-family:var(--font-mono); font-size:12.5px; color:var(--text-2); white-space:nowrap;}
+
+  .level-badge{display:inline-block; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:700;}
+  .level-info{background:var(--indigo-bg); color:var(--indigo-strong);}
+  .level-warning{background:var(--amber-bg); color:var(--amber-strong);}
+  .level-critical{background:var(--red-bg); color:var(--red-strong);}
+  .level-success{background:var(--teal-bg); color:var(--teal-strong);}
+</style>
+</head>
+<body class="{{MODE_CLASS}}">
+
+<!--
+  ============================================================================
+  LogTrack Portal — Pantalla 3: Vista de logs
+  ============================================================================
+  Placeholders a reemplazar por Java:
+
+  {{MODE_CLASS}}    "mode-vulnerable" | "mode-remediado"
+                    Esta clase decide, con reglas CSS puras (sin JS), cuál
+                    de los dos bloques de contenido se muestra:
+                      - .log-raw-block   → visible solo si mode-vulnerable
+                      - .log-table-block → visible solo si mode-remediado
+                    Ambos bloques deben ir siempre en el HTML; el que no
+                    corresponde queda oculto automáticamente.
+
+  {{MODE_LABEL}}         Texto del modo actual para el pill superior
+  {{PANEL_URL}}          href para volver al panel de control (pantalla 2)
+
+  {{LOG_TOTAL_LINES}}    Total de líneas (vulnerable) o de eventos (remediado)
+  {{LOG_FORMAT_LABEL}}   Ej: "Texto plano sin estructura" | "Tabular estructurado"
+  {{LOG_INTEGRITY_LABEL}} (opcional) Ej: "Posible manipulación detectada".
+                          Dejar como cadena vacía "" para ocultar el aviso
+                          (regla CSS ".integrity-pill:empty").
+
+  SOLO EN MODO VULNERABLE:
+  {{LOG_RAW_CONTENT}}   Contenido crudo del archivo de log, tal cual se
+                        generó (líneas sueltas, sin orden, mezclado con
+                        texto de consola). IMPORTANTE: Java debe escapar
+                        caracteres HTML (<, >, &) y caracteres de control
+                        antes de insertarlos aquí, para que el intento de
+                        inyección del escenario "Log Tampering" se muestre
+                        como texto visible y no rompa la página.
+
+  SOLO EN MODO REMEDIADO:
+  {{LOG_TABLE_ROWS}}    Una o más filas <tr> ya construidas por Java.
+                        Formato esperado por fila:
+
+                        <tr>
+                          <td class="mono">2026-09-06 14:32:01</td>
+                          <td><span class="level-badge level-warning">WARNING</span></td>
+                          <td>jsmith</td>
+                          <td>LOGIN_FAILED</td>
+                          <td class="mono">192.168.1.45</td>
+                          <td>Intento 3 de 10 — credenciales inválidas</td>
+                        </tr>
+
+                        Clases disponibles para el badge de nivel:
+                        level-info (informativo), level-warning (alerta),
+                        level-critical (crítico), level-success (bloqueado/ok).
+                        Recordar escapar el contenido de cada celda.
+  ============================================================================
+-->
+
+<div class="wrap">
+
+  <div class="topbar">
+    <!-- Placeholder: {{PANEL_URL}} -->
+    <a class="back-link" href="{{PANEL_URL}}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Volver al panel
+    </a>
+    <span class="mode-pill"><span class="dot"></span>{{MODE_LABEL}}</span>
+  </div>
+
+  <div class="page-head">
+    <h1>Registro de eventos</h1>
+    <p>Contenido del archivo de log generado por el sistema en este modo,
+      tal como quedaría disponible para un analista de seguridad.</p>
+  </div>
+
+  <div class="log-toolbar">
+    <span class="log-stat-pill">Líneas registradas: <strong>{{LOG_TOTAL_LINES}}</strong></span>
+    <span class="log-stat-pill">Formato: <strong>{{LOG_FORMAT_LABEL}}</strong></span>
+    <!-- Placeholder opcional: {{LOG_INTEGRITY_LABEL}} -->
+    <span class="integrity-pill">{{LOG_INTEGRITY_LABEL}}</span>
+  </div>
+
+  <!-- Visible únicamente en modo vulnerable -->
+  <div class="log-raw-block">
+    <div class="log-raw-card">
+      <div class="log-raw-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span class="fname">system.log</span>
+        <span class="tag">Sin estructura</span>
+      </div>
+      <div class="log-raw-body">
+        <!-- Placeholder: {{LOG_RAW_CONTENT}} — texto ya escapado por Java -->
+        <pre>{{LOG_RAW_CONTENT}}</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visible únicamente en modo remediado -->
+  <div class="log-table-block">
+    <div class="log-table-card">
+      <div class="log-table-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        <span class="fname">security-events.log</span>
+        <span class="tag">Estructurado</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha y hora</th>
+              <th>Nivel</th>
+              <th>Usuario</th>
+              <th>Evento</th>
+              <th>IP origen</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Placeholder: {{LOG_TABLE_ROWS}} — filas <tr> generadas por Java -->
+            {{LOG_TABLE_ROWS}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

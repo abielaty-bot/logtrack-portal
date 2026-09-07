@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogTrack Portal — Selección de modo</title>
+<style>
+  /* ===== Design tokens — compartidos en las 4 pantallas de LogTrack Portal ===== */
+  :root{
+    --ink-0:#0B0E16;   /* fondo base */
+    --ink-1:#141824;   /* superficie de tarjeta */
+    --ink-2:#1B2030;   /* superficie elevada (chips, hover) */
+    --line:#242B3D;    /* borde estándar */
+    --line-strong:#323A52;
+    --text-1:#EDEFF5;  /* texto principal */
+    --text-2:#8B93A7;  /* texto secundario */
+    --text-3:#5B6377;  /* texto terciario / notas */
+    --indigo:#6C7BFA; --indigo-strong:#8B97FF; --indigo-bg:rgba(108,123,250,.14);
+    --red:#F0465C;     --red-strong:#FF7A8A;    --red-bg:rgba(240,70,92,.14);
+    --teal:#2BD4A0;    --teal-strong:#5CE8BC;   --teal-bg:rgba(43,212,160,.14);
+    --amber:#F5A623;   --amber-strong:#FFC155;  --amber-bg:rgba(245,166,35,.14);
+    --r-hero:24px; --r-card:16px; --r-chip:10px;
+    --shadow-hero:0 1px 2px rgba(0,0,0,.5), 0 24px 48px -16px rgba(0,0,0,.55);
+    --shadow-card:0 1px 2px rgba(0,0,0,.4), 0 10px 24px -12px rgba(0,0,0,.45);
+    --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter","Helvetica Neue",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--font-sans);
+    background-color:var(--ink-0);
+    background-image:
+      radial-gradient(circle at 15% -10%, rgba(108,123,250,.16), transparent 42%),
+      radial-gradient(circle at 100% 0%, rgba(43,212,160,.08), transparent 40%);
+    background-attachment:fixed;
+    color:var(--text-1);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  a{color:inherit;}
+  ::selection{background:var(--indigo-bg);}
+  :focus-visible{outline:2px solid var(--indigo-strong); outline-offset:2px; border-radius:4px;}
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+
+  .wrap{max-width:1000px; margin:0 auto; padding:64px 28px 56px;}
+
+  .intro{max-width:640px; margin:0 auto 44px; text-align:center;}
+  .intro h1{font-size:38px; font-weight:800; letter-spacing:-.02em; margin:0 0 14px;}
+  .intro p{font-size:16px; color:var(--text-2); margin:0;}
+
+  .lead{text-align:center; color:var(--text-2); font-size:15px; margin:0 0 28px;}
+
+  .btn{display:inline-flex; align-items:center; gap:8px; padding:12px 20px; border-radius:11px;
+    font-size:14.5px; font-weight:600; border:1px solid transparent; cursor:pointer;
+    text-decoration:none; transition:transform .15s ease, box-shadow .15s ease;}
+  .btn svg{width:16px;height:16px;}
+  .btn-danger{background:linear-gradient(135deg, var(--red), #C22E42); color:#fff;
+    box-shadow:0 6px 16px -6px rgba(240,70,92,.5);}
+  .btn-danger:hover{transform:translateY(-1px); box-shadow:0 10px 22px -6px rgba(240,70,92,.6);}
+  .btn-success{background:linear-gradient(135deg, var(--teal), #14A87C); color:#04241A;
+    box-shadow:0 6px 16px -6px rgba(43,212,160,.5);}
+  .btn-success:hover{transform:translateY(-1px); box-shadow:0 10px 22px -6px rgba(43,212,160,.6);}
+
+  .icon-badge{width:48px; height:48px; border-radius:14px; display:flex; align-items:center;
+    justify-content:center; margin-bottom:18px;}
+  .icon-badge svg{width:24px; height:24px;}
+  .tone-red{background:var(--red-bg); color:var(--red-strong);}
+  .tone-teal{background:var(--teal-bg); color:var(--teal-strong);}
+
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
+  @media (max-width:760px){ .grid-2{grid-template-columns:1fr;} }
+
+  .mode-card{background:var(--ink-1); border:1px solid var(--line); border-radius:var(--r-hero);
+    padding:32px; box-shadow:var(--shadow-hero); transition:transform .18s ease, border-color .18s ease;}
+  .mode-card:hover{transform:translateY(-4px);}
+  .mode-card-danger:hover{border-color:rgba(240,70,92,.4);}
+  .mode-card-safe:hover{border-color:rgba(43,212,160,.4);}
+  .mode-card h2{font-size:21px; font-weight:700; margin:0 0 8px;}
+  .mode-card > p{color:var(--text-2); font-size:14.5px; margin:0 0 20px; max-width:44ch;}
+  .mode-card ul{list-style:none; margin:0 0 28px; padding:0; display:flex; flex-direction:column; gap:11px;}
+  .mode-card li{font-size:14px; color:var(--text-1); display:flex; align-items:flex-start; gap:10px;}
+  .mode-card li::before{content:""; width:6px; height:6px; border-radius:50%; margin-top:7px; flex-shrink:0;}
+  .mode-card-danger li::before{background:var(--red);}
+  .mode-card-safe li::before{background:var(--teal);}
+
+  .page-footer{margin-top:52px; text-align:center;}
+  .page-footer p{margin:0 0 6px; font-size:13px; color:var(--text-3);}
+  .optional:empty{display:none;}
+
+  @media (max-width:560px){ .intro h1{font-size:30px;} }
+</style>
+</head>
+<body>
+
+<!--
+  ============================================================================
+  LogTrack Portal — Pantalla 1: Selección de modo
+  ============================================================================
+  Esta pantalla es en su mayoría estática. Placeholders a reemplazar por Java:
+
+  {{VULNERABLE_MODE_URL}}
+      URL/href del enlace que lleva al Panel de control (pantalla 2)
+      ya operando en modo vulnerable. Ej: "/panel?mode=vulnerable"
+
+  {{REMEDIATED_MODE_URL}}
+      URL/href del enlace que lleva al Panel de control (pantalla 2)
+      ya operando en modo remediado. Ej: "/panel?mode=remediado"
+
+  {{COURSE_INFO}}  (opcional)
+      Texto libre para pie de página (ej. "Universidad X · Curso de
+      Ciberseguridad · Grupo 4"). Si se deja vacío, la línea se oculta
+      automáticamente (regla CSS ".optional:empty").
+  ============================================================================
+-->
+
+<div class="wrap">
+
+  <header class="intro">
+    <h1>LogTrack Portal</h1>
+    <p>Un mismo sistema, dos comportamientos frente a un ataque. Este portal
+      académico compara cómo responde una aplicación cuando no registra
+      eventos de seguridad frente a cuando sí lo hace, con alertas y
+      protección activa.</p>
+  </header>
+
+  <p class="lead">Elige un modo para comenzar la demostración.</p>
+
+  <div class="grid-2">
+
+    <!-- Tarjeta: Modo Vulnerable -->
+    <div class="mode-card mode-card-danger">
+      <div class="icon-badge tone-red">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2 4 5v6c0 5.25 3.4 9.74 8 11 4.6-1.26 8-5.75 8-11V5z"/>
+          <line x1="4" y1="4" x2="20" y2="20"/>
+        </svg>
+      </div>
+      <h2>Modo vulnerable</h2>
+      <p>El sistema opera sin ningún mecanismo de registro. Los ataques
+        ocurren sin dejar rastro y sin generar ninguna alerta.</p>
+      <ul>
+        <li>Sin registro de eventos de seguridad</li>
+        <li>Sin alertas ante actividad sospechosa</li>
+        <li>Sin protección contra inyección en los logs</li>
+      </ul>
+      <!-- Placeholder: {{VULNERABLE_MODE_URL}} -->
+      <a class="btn btn-danger" href="{{VULNERABLE_MODE_URL}}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Entrar en modo vulnerable
+      </a>
+    </div>
+
+    <!-- Tarjeta: Modo Remediado -->
+    <div class="mode-card mode-card-safe">
+      <div class="icon-badge tone-teal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2 4 5v6c0 5.25 3.4 9.74 8 11 4.6-1.26 8-5.75 8-11V5z"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+      </div>
+      <h2>Modo remediado</h2>
+      <p>El mismo sistema, con registro estructurado, alertas en tiempo
+        real y protección activa contra manipulación de logs.</p>
+      <ul>
+        <li>Registro estructurado de cada evento</li>
+        <li>Alertas en tiempo real ante actividad sospechosa</li>
+        <li>Protección contra inyección en los logs</li>
+      </ul>
+      <!-- Placeholder: {{REMEDIATED_MODE_URL}} -->
+      <a class="btn btn-success" href="{{REMEDIATED_MODE_URL}}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Entrar en modo remediado
+      </a>
+    </div>
+
+  </div>
+
+  <footer class="page-footer">
+    <!-- Placeholder opcional: {{COURSE_INFO}} -->
+    <p class="optional">{{COURSE_INFO}}</p>
+    <p>Esta demostración se basa en la categoría OWASP A09:2021, fallas de
+      registro y monitoreo de seguridad.</p>
+  </footer>
+
+</div>
+</body>
+</html>
