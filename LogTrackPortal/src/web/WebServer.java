@@ -391,8 +391,8 @@ public class WebServer {
             respuesta = HtmlTemplates.paginaMetricas(obtenerModeClass(contexto), obtenerModeLabel(contexto),
                     "/panel?modo=" + contexto.modo, riskLevelClass, riskLevelLabel, riskLevelDesc,
                     String.valueOf(resumen.totalEventos), vulnerable ? "0" : String.valueOf(resumen.totalAlertas),
-                    metricaAlertasClass, vulnerable ? "N/A" : resumen.tiempoPromedio,
-                    vulnerable ? "0%" : resumen.contextoPct, construirFilasMetricas(contexto), insightText);
+                    metricaAlertasClass, vulnerable ? "N/A" : resumen.tiempoPromedio, vulnerable ? "0" : "100",
+                    construirFilasMetricas(contexto), insightText);
         }
 
         enviarRespuestaHtml(exchange, 200, respuesta);
