@@ -30,7 +30,11 @@ de logging. `AlertListener` está suscrito únicamente al modo remediado.
   escenario.
 - Se implementó la lectura del log vulnerable.
 - Se implementó el parseo del log remediado mediante una expresión regular.
-- Se corrigió la visualización de contexto para evitar `0%%`.
+-  Se corrigió y verificó la visualización del porcentaje de contexto:
+  ahora muestra `0%` en modo vulnerable y `100%` en modo remediado,
+  sin duplicar el símbolo `%`.
+- La corrección fue guardada en el commit `00879bb` y subida a la
+  rama `main` de GitHub.
 
 ## Pruebas realizadas
 
