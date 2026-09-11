@@ -36,3 +36,9 @@ dependencies/
 .DS_Store
 Thumbs.db
 ```
+# Archivos compilados de Java
+*.class
+
+# Logs generados durante las pruebas
+log_vulnerable.txt
+log_remediado.txt

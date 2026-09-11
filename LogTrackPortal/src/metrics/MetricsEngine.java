@@ -5,7 +5,8 @@ import domain.Severity;
 import events.EventListener;
 
 /**
- * Motor de métricas que cuenta eventos y alertas, y calcula tiempos de detección.
+ * Motor de métricas que cuenta eventos y alertas, y calcula tiempos de
+ * detección.
  */
 public class MetricsEngine implements EventListener {
     private int totalEventos;
@@ -49,7 +50,8 @@ public class MetricsEngine implements EventListener {
     @Override
     public void onEvent(SecurityEvent evento) {
         this.totalEventos++;
-        // Simulación básica: si la severidad es CRITICO o ALTO, contamos como alerta potencial
+        // Simulación básica: si la severidad es CRITICO o ALTO, contamos como alerta
+        // potencial
         if (evento.getSeverity() == Severity.CRITICO || evento.getSeverity() == Severity.ALTO) {
             this.alertasDisparadas++;
         }
@@ -71,6 +73,22 @@ public class MetricsEngine implements EventListener {
         System.out.println("| Alertas disparadas: " + String.format("%-17d", alertasDisparadas) + " |");
         System.out.println("| Tiempo hasta detección: " + String.format("%-12d", tiempoTranscurrido) + " s |");
         System.out.println("+----------------------------------+");
+    }
+
+    public int getTotalEventos() {
+        return totalEventos;
+    }
+
+    public int getAlertasDisparadas() {
+        return alertasDisparadas;
+    }
+
+    public double getTiempoTranscurridoSegundos() {
+        if (tiempoInicio == 0 || ejecutando) {
+            return 0;
+        }
+
+        return (tiempoFin - tiempoInicio) / 1000.0;
     }
 
     /**
